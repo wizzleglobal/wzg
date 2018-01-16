@@ -1,0 +1,2 @@
+# wzg
+Wizzle Global token
