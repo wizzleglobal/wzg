@@ -1,8 +1,7 @@
 pragma solidity ^0.4.18;
 
-import "WZGToken.sol";
-
-import "../Ownable.sol";
+import "./WZGToken.sol";
+import "./Ownable.sol";
 
 contract WizzleGlobalController is Ownable {
 
@@ -28,6 +27,5 @@ contract WizzleGlobalController is Ownable {
     }
 
     // TODO: Add call for claimTokens()
-
 
 }

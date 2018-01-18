@@ -1,7 +1,6 @@
 pragma solidity ^0.4.18;
 
 import "./Controlled.sol";
-//import "./TokenController.sol";
 
 contract WizzleGlobalToken is Controlled {
 
