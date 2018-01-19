@@ -1,6 +1,7 @@
 pragma solidity ^0.4.18;
 
 import "./Controlled.sol";
+import "./ERC20Basic.sol";
 
 contract WizzleGlobalToken is Controlled {
 
@@ -14,7 +15,7 @@ contract WizzleGlobalToken is Controlled {
     }
 
     // block number when token was created
-    uint public creationBlock;
+    uint256 public creationBlock;
     mapping (address => Checkpoint[]) balances;
     mapping (address => mapping (address => uint256)) allowed;
     Checkpoint[] totalSupplyHistory;
@@ -45,7 +46,7 @@ contract WizzleGlobalToken is Controlled {
         return true;
     }
 
-    function doTransfer(address _from, address _to, uint _amount) internal {
+    function doTransfer(address _from, address _to, uint256 _amount) internal {
            if (_amount == 0) {
                Transfer(_from, _to, _amount); // follow the spec to raise the event when transfer 0
                return;
@@ -55,14 +56,7 @@ contract WizzleGlobalToken is Controlled {
            var previousBalanceFrom = balanceOf(_from);
            require(previousBalanceFrom >= _amount);
            var previousBalanceTo = balanceOf(_to);
-           require(previousBalanceTo + _amount >= previousBalanceTo); // Check for overflow
-
-           // Alerts the token controller of the transfer
-           /*
-           if (isContract(controller)) {
-               require(TokenController(controller).onTransfer(_from, _to, _amount));
-           }
-           */
+           require(previousBalanceTo + _amount >= previousBalanceTo); // overflow
 
            updateValueAtNow(balances[_from], previousBalanceFrom - _amount);
            updateValueAtNow(balances[_to], previousBalanceTo + _amount);
@@ -77,13 +71,6 @@ contract WizzleGlobalToken is Controlled {
         require(transfersEnabled);
         require((_amount == 0) || (allowed[msg.sender][_spender] == 0));
 
-        // Alerts the token controller of the approve function call
-        /*
-        if (isContract(controller)) {
-            require(TokenController(controller).onApprove(msg.sender, _spender, _amount));
-        }
-        */
-
         allowed[msg.sender][_spender] = _amount;
         Approval(msg.sender, _spender, _amount);
         return true;
@@ -97,14 +84,15 @@ contract WizzleGlobalToken is Controlled {
         return totalSupplyAt(block.number);
     }
 
-    function balanceOfAt(address _owner, uint _blockNumber) public constant returns (uint) {
+    function balanceOfAt(address _owner, uint256 _blockNumber) public constant returns (uint256) {
         if ((balances[_owner].length == 0) || (balances[_owner][0].fromBlock > _blockNumber)) {
             return 0;
         } else {
             return getValueAt(balances[_owner], _blockNumber);
         }
     }
-    function totalSupplyAt(uint _blockNumber) public constant returns(uint) {
+
+    function totalSupplyAt(uint256 _blockNumber) public constant returns(uint256) {
         if ((totalSupplyHistory.length == 0) || (totalSupplyHistory[0].fromBlock > _blockNumber)) {
             return 0;
         } else {
@@ -112,11 +100,11 @@ contract WizzleGlobalToken is Controlled {
         }
     }
 
-    function mint(address _owner, uint _amount) public onlyController returns (bool) {
-        uint curTotalSupply = totalSupply();
-        require(curTotalSupply + _amount >= curTotalSupply); // Check for overflow
-        uint previousBalanceTo = balanceOf(_owner);
-        require(previousBalanceTo + _amount >= previousBalanceTo); // Check for overflow
+    function mint(address _owner, uint256 _amount) public onlyController returns (bool) {
+        uint256 curTotalSupply = totalSupply();
+        require(curTotalSupply + _amount >= curTotalSupply); // overflow
+        uint256 previousBalanceTo = balanceOf(_owner);
+        require(previousBalanceTo + _amount >= previousBalanceTo); // overflow
         updateValueAtNow(totalSupplyHistory, curTotalSupply + _amount);
         updateValueAtNow(balances[_owner], previousBalanceTo + _amount);
         Transfer(0, _owner, _amount);
@@ -127,21 +115,21 @@ contract WizzleGlobalToken is Controlled {
         transfersEnabled = _transfersEnabled;
     }
 
-    function getValueAt(Checkpoint[] storage checkpoints, uint _block) constant internal returns (uint) {
+    function getValueAt(Checkpoint[] storage checkpoints, uint256 _block) constant internal returns (uint256) {
         if (checkpoints.length == 0) 
             return 0;
 
-        // Shortcut for the actual value
+        // shortcut for the actual value
         if (_block >= checkpoints[checkpoints.length-1].fromBlock)
             return checkpoints[checkpoints.length-1].value;
         if (_block < checkpoints[0].fromBlock) 
             return 0;
 
-        // Binary search of the value in the array
-        uint min = 0;
-        uint max = checkpoints.length-1;
+        // binary search of the value in the array
+        uint256 min = 0;
+        uint256 max = checkpoints.length-1;
         while (max > min) {
-            uint mid = (max + min + 1) / 2;
+            uint256 mid = (max + min + 1) / 2;
             if (checkpoints[mid].fromBlock<=_block) {
                 min = mid;
             } else {
@@ -151,7 +139,7 @@ contract WizzleGlobalToken is Controlled {
         return checkpoints[min].value;
     }
 
-    function updateValueAtNow(Checkpoint[] storage checkpoints, uint _value) internal {
+    function updateValueAtNow(Checkpoint[] storage checkpoints, uint256 _value) internal {
         if ((checkpoints.length == 0) || (checkpoints[checkpoints.length-1].fromBlock < block.number)) {
                Checkpoint storage newCheckPoint = checkpoints[checkpoints.length++];
                newCheckPoint.fromBlock = uint128(block.number);
@@ -162,57 +150,30 @@ contract WizzleGlobalToken is Controlled {
            }
     }
 
-    /*
-    function isContract(address _addr) constant internal returns(bool) {
-        uint size;
-        if (_addr == 0) 
-            return false;
-        assembly {
-            size := extcodesize(_addr)
-        }
-        return size>0;
-    }
-    */
-
-    function min(uint a, uint b) pure internal returns (uint) {
+    function min(uint256 a, uint256 b) pure internal returns (uint256) {
         return a < b ? a : b;
     }
-
-    /// @notice The fallback function: If the contract's controller has not been
-    ///  set to 0, then the `proxyPayment` method is called which relays the
-    ///  ether and creates tokens as described in the token controller contract
-    /*
-    function () public payable {
-        require(isContract(controller));
-        require(TokenController(controller).proxyPayment.value(msg.value)(msg.sender));
-    }
-    */
 
     function () public payable {
         revert();
     }
 
-    event ClaimedTokens(address indexed _token, address indexed _controller, uint _amount);
-    event Transfer(address indexed _from, address indexed _to, uint256 _amount);
-    event NewCloneToken(address indexed _cloneToken, uint _snapshotBlock);
-    event Approval(address indexed _owner, address indexed _spender, uint256 _amount);
-
-    /// @notice This method can be used by the controller to extract mistakenly
-    ///  sent tokens to this contract.
-    /// @param _token The address of the token contract that you want to recover
-    ///  set to 0 in case you want to extract ether.
-    /*
     function claimTokens(address _token) public onlyController {
-        if (_token == 0x0) {
-            controller.transfer(this.balance); // TODO: Maybe not needed if fallback calls revert()
+        if (_token == address(0)) {
+            // even if fallback calls revert(), there could be balance
+            controller.transfer(this.balance); 
             return;
         }
 
-        WizzleGlobalToken token = WizzleGlobalToken(_token);
-        uint balance = token.balanceOf(this);
+        ERC20Basic token = ERC20Basic(_token);
+        uint256 balance = token.balanceOf(this);
         token.transfer(controller, balance);
         ClaimedTokens(_token, controller, balance);
     }
-    */
+
+    event ClaimedTokens(address indexed _token, address indexed _controller, uint256 _amount);
+    event Transfer(address indexed _from, address indexed _to, uint256 _amount);
+    event NewCloneToken(address indexed _cloneToken, uint256 _snapshotBlock);
+    event Approval(address indexed _owner, address indexed _spender, uint256 _amount);
 
 }

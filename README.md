@@ -1,2 +1,0 @@
-# WZG
-Wizzle Global Token

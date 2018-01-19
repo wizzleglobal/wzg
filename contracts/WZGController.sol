@@ -2,6 +2,7 @@ pragma solidity ^0.4.18;
 
 import "./WZGToken.sol";
 import "./Ownable.sol";
+import "./ERC20Basic.sol";
 
 contract WizzleGlobalController is Ownable {
 
@@ -26,6 +27,16 @@ contract WizzleGlobalController is Ownable {
         token.enableTransfers(_transfersEnabled);
     }
 
-    // TODO: Add call for claimTokens()
+    function claimTokens(address _token) public {
+        token.claimTokens(_token);
+    }
+
+    function transferAnyERC20Token(address tokenAddress, uint _amount) public onlyOwner returns (bool success) {
+        return ERC20Basic(tokenAddress).transfer(owner, _amount);
+    }
+
+    function transferEther(address destination) public onlyOwner {
+        destination.transfer(this.balance);
+    }
 
 }
